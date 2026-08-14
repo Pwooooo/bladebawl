@@ -5143,7 +5143,7 @@ local function MainConnection()
                     return
                 end
 
-                if ACHAOTICDATA.Parry[Ball].LobbyAttempts >= 3 then
+                if ACHAOTICDATA.Parry[Ball].LobbyAttempts >= 6 then
                     continue
                 end
                 if os.clock() < ACHAOTICDATA.Parry[Ball].RefireAt then
@@ -5158,7 +5158,7 @@ local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
                 local Ping_Lead = math.clamp(Ping / 1000, 0.02, 0.25)
                 local Speed_Lead = math.max(0, (Speed - 400) / 1500)
                 local Lead_Time = Ping_Lead + 0.15 + Speed_Lead
-                local Parry_Accuracy = math.clamp(Speed * Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier, 4, 400)
+                local Parry_Accuracy = math.clamp(Speed * Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier, 30, 400)
                 local okC, Curved = pcall(IsBall_Curved, Ball, Ping, GetCharacter())
                 Curved = okC and Curved or false
 
@@ -5176,7 +5176,7 @@ local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
                     FireParry()
 
                     ACHAOTICDATA.Parry[Ball].LobbyLastParry = Parry_Time
-                    ACHAOTICDATA.Parry[Ball].RefireAt = Parry_Time + Lead_Time
+                    ACHAOTICDATA.Parry[Ball].RefireAt = Parry_Time + math.min(Lead_Time, 0.12)
                     ACHAOTICDATA.Parry[Ball].LobbyAttempts += 1
                 end
             end
