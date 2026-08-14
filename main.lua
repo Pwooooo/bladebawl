@@ -4824,9 +4824,15 @@ local function Parry()
             PlayerPositions[char.Name] = char.HumanoidRootPart.Position
         end
     end
-    local CameraCenter = Camera.ViewportSize / 2
+local CameraCenter = Camera.ViewportSize / 2
     local CameraData = {CameraCenter.X, CameraCenter.Y}
     print(Hash3())
+    pcall(function()
+        ReplicatedStorage.Remotes.ParryButtonPress:FireServer()
+        ReplicatedStorage.Remotes.ResetAbilityCooldown:FireServer()
+        ReplicatedStorage.Remotes.EndCD:FireServer()
+        ReplicatedStorage.Remotes.SecondaryEndCD:FireServer()
+    end)
     ParryRemote:FireServer(Hash1, Hash2, Hash3(), 0.025, Camera.CFrame, PlayerPositions, CameraData, false)
     ACHAOTICDATA.Global.PingStart = os.clock()
 end
@@ -4875,6 +4881,47 @@ if ACHAOTICDATA.Global.Parries <= 1000 then
             end
         end)
     end
+end
+
+do
+    local WrapFn = newcclosure or (function(fn) return fn end)
+    local HookedTweenCreate = TweenService.Create
+    TweenService.Create = WrapFn(function(self, target, info, goal)
+        if typeof(target) == 'Instance' and target:IsA('UIGradient') and target.Parent and target.Parent:IsA('GuiObject') and (target.Parent.Name == 'Block' or target.Parent.Name == 'Ability') then
+            task.defer(function()
+                pcall(function()
+                    target.Offset = Vector2.new(0, 0.5)
+                end)
+            end)
+            return HookedTweenCreate(self, target, TweenInfo.new(0), {Offset = Vector2.new(0, 0.5)})
+        end
+        return HookedTweenCreate(self, target, info, goal)
+    end)
+    task.spawn(function()
+        local Hotbar
+        pcall(function()
+            Hotbar = game.Players.LocalPlayer.PlayerGui:WaitForChild('Hotbar')
+        end)
+        if not Hotbar then
+            return
+        end
+        local Block = Hotbar:WaitForChild('Block')
+        local Gradient = Block:WaitForChild('UIGradient')
+        local VisualCD = Hotbar:FindFirstChild('VisualCD')
+        local SecondaryVisualCD = Hotbar:FindFirstChild('SecondaryVisualCD')
+        while true do
+            task.wait()
+            pcall(function()
+                Gradient.Offset = Vector2.new(0, 0.5)
+                if VisualCD and VisualCD.Visible then
+                    VisualCD.Visible = false
+                end
+                if SecondaryVisualCD and SecondaryVisualCD.Visible then
+                    SecondaryVisualCD.Visible = false
+                end
+            end)
+        end
+    end)
 end
 
 do
@@ -5057,7 +5104,7 @@ Ball:GetAttributeChangedSignal('target'):Once(function()
                 local speed = velocity.Magnitude
                 local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
                 local speed_divisor = (2.4 + capped_speed_diff * 0.002) * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier
-                local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
+                local parry_accuracy = math.min(ping_threshold + math.max(speed / speed_divisor, 9.5), 48)
                 local okC, curved = pcall(IsBall_Curved, Ball, ping, GetCharacter())
                 curved = okC and curved or false
 
