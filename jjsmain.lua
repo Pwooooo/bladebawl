@@ -85,6 +85,16 @@ local function fireDash(dir)
 	end)
 end
 
+-- The game never fires Dash:Fire for "Front" - the front dash is the Chase
+-- mechanic via the moveset service (ToolController:UseSetService), with the
+-- airborne flag as its argument.
+local function fireFrontDash()
+	local ch = LocalPlayer.Character
+	local hum = ch and ch:FindFirstChild("Humanoid")
+	local airborne = hum and hum.FloorMaterial == Enum.Material.Air or false
+	pcall(function() ToolController:UseSetService("Chase", airborne) end)
+end
+
 local function dashReady()
 	local ch = LocalPlayer.Character
 	if not ch then return false end
@@ -245,7 +255,11 @@ function MovementController:DashRequest()
 	local now = tick()
 	if now - lastDash < (DASH_CD[dir] or 2) then return end
 	lastDash = now
-	fireDash(dir)
+	if dir == "Front" then
+		fireFrontDash()
+	else
+		fireDash(dir)
+	end
 end
 
 --[[ No Cooldown (Yuji black flash loop)
@@ -288,7 +302,7 @@ local function blackflashFinisher()
 		return
 	end
 	faceTarget(tgt, hrp)
-	fireDash("Front")
+	fireFrontDash()
 	task.wait(0.02)
 	if CFG.Alive and dashReady() then
 		pcall(function() ToolController:Melee() end)
