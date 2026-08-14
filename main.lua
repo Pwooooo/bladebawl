@@ -5065,7 +5065,8 @@ local function MainConnection()
                 local speed_lead = math.max(0, (speed - 400) / 1500)
                 local lead_time = ping_lead + 0.15 + speed_lead
                 local parry_accuracy = math.clamp(speed * lead_time * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier, 4, 400)
-                local curved = IsBall_Curved(Ball, ping, GetCharacter())
+                local okC, curved = pcall(IsBall_Curved, Ball, ping, GetCharacter())
+                curved = okC and curved or false
 
                 ACHAOTICDATA.Global.AutoParryCurrentAccuracy = parry_accuracy
 
@@ -5084,7 +5085,7 @@ local function MainConnection()
                 if ACHAOTICDATA.Config.ParrySettings.Detections.DeathSlashBall.Enabled and ACHAOTICDATA.Config.ParrySettings.Detections.DeathSlashBall.Flag then continue end
                 if ACHAOTICDATA.Config.ParrySettings.Detections.TimeHole.Enabled and ACHAOTICDATA.Config.ParrySettings.Detections.TimeHole.Flag then continue end
                 if ACHAOTICDATA.Config.AutoParry.AntiCurveEnabled and curved then continue end
-                if speed < 5 or (speed > 0 and distance / speed > 0.75) then continue end
+                if speed < 4 or (speed > 0 and distance / speed > 0.75) then continue end
 
                 if getgenv().CooldownProtection then
                     local ok, ParryCD = pcall(function() return ACHAOTICDATA.Player.LocalPlayer.PlayerGui.Hotbar.Block.UIGradient end)
@@ -5158,11 +5159,12 @@ local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
                 local Speed_Lead = math.max(0, (Speed - 400) / 1500)
                 local Lead_Time = Ping_Lead + 0.15 + Speed_Lead
                 local Parry_Accuracy = math.clamp(Speed * Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier, 4, 400)
-                local Curved = IsBall_Curved(Ball, Ping, GetCharacter())
+                local okC, Curved = pcall(IsBall_Curved, Ball, Ping, GetCharacter())
+                Curved = okC and Curved or false
 
                 local CurveVaildation = Curved and ACHAOTICDATA.Config.LobbyAutoParry.AntiCurveEnabled
 
-                if Speed < 5 or (Speed > 0 and Distance / Speed > 0.75) then continue end
+                if Speed < 4 or (Speed > 0 and Distance / Speed > 0.75) then continue end
 
                 if Ball_Target == tostring(ACHAOTICDATA.Player.LocalPlayer) and Distance <= Parry_Accuracy and Distance >= 3.5 and not CurveVaildation then
                     local Parry_Time = os.clock()
@@ -7222,7 +7224,7 @@ local RequestSpamParry = function()
 end
 
 local function LoopConnection(deltaTime)
-    MainConnection()
+    pcall(MainConnection)
     RefreshVM(deltaTime)
 end
 
