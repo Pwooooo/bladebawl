@@ -214,7 +214,7 @@ Locks and dashes around the target when Dash Assist is on and a target is in
 range; otherwise dashes relative to the camera like the game would. ]]
 local function dashDirection()
 	local cam = workspace.CurrentCamera
-	local mv = getMoveVector()
+	local mv = -getMoveVector()
 	if not cam then return "Front" end
 	local fwd = (cam.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
 	local right = (cam.CFrame.RightVector * Vector3.new(1, 0, 1)).Unit
@@ -240,7 +240,7 @@ function MovementController:DashRequest()
 			local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
 			if dist <= Options.LockRange.Value then
 				faceTarget(enemy, hrp)
-				local mv = getMoveVector()
+				local mv = -getMoveVector()
 				if math.abs(mv.X) > 0.3 then
 					fireDash(mv.X > 0 and "Right" or "Left")
 				else
