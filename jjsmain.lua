@@ -102,12 +102,50 @@ local function dashReady()
 	return info and not info:FindFirstChild("NoDash")
 end
 
---[[ Auto Block ]]
+--[[ Auto Block: only engages when an enemy within range starts an M1 attack.
+After the block absorbs a hit, M1 Punish auto-melees the attacker. ]]
+local M1_PATTERNS = { "m1", "combo", "punch", "slash", "melee", "basic", "hit" }
+local function enemyIsM1ing(enemy)
+	local hum = enemy and enemy:FindFirstChild("Humanoid")
+	if not hum then return false end
+	for _, t in ipairs(hum:GetPlayingAnimationTracks()) do
+		local name = t.Animation and t.Animation.Name or ""
+		local n = name:lower()
+		for _, pat in ipairs(M1_PATTERNS) do
+			if n:find(pat, 1, true) then return true end
+		end
+	end
+	return false
+end
+
 local function releaseBlock()
 	if blocking then
 		blocking = false
 		pcall(function() BlockService.Deactivated:Fire() end)
 	end
+end
+
+local punishPending = false
+local function punishM1(target)
+	if punishPending then return end
+	punishPending = true
+	task.spawn(function()
+		task.wait(Options.PunishDelay.Value)
+		punishPending = false
+		if CFG.Alive and Toggles.M1Punish.Value and target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") then
+			local hum = target.Humanoid
+			local hrp = getHRP()
+			if hum.Health > 0 and hrp then
+				local dist = (target.HumanoidRootPart.Position - hrp.Position).Magnitude
+				if dist <= Options.BlockRange.Value + 4 then
+					releaseBlock()
+					faceTarget(target, hrp)
+					task.wait(0.02)
+					pcall(function() ToolController:Melee() end)
+				end
+			end
+		end
+	end)
 end
 
 task.spawn(function()
@@ -120,7 +158,6 @@ task.spawn(function()
 		local hrp = getHRP()
 		if not hrp then releaseBlock() else
 			local enemy = getNearestEnemy(Options.BlockRange.Value)
-			local shouldBlock = false
 			local target = nil
 			if enemy and enemy:FindFirstChild("HumanoidRootPart") then
 				local toEnemy = enemy.HumanoidRootPart.Position - hrp.Position
@@ -128,15 +165,15 @@ task.spawn(function()
 				toEnemy = toEnemy.Magnitude > 0.01 and toEnemy.Unit or Vector3.new(0, 0, 1)
 				local facing = hrp.CFrame.LookVector
 				local dot = (Vector3.new(facing.X, 0, facing.Z).Unit):Dot(Vector3.new(toEnemy.X, 0, toEnemy.Z).Unit)
-				if dist <= Options.BlockRange.Value + 2 and dot >= math.cos(math.rad(Options.BlockAngle.Value)) then
-					shouldBlock = true
+				if dist <= Options.BlockRange.Value + 2 and dot >= math.cos(math.rad(Options.BlockAngle.Value)) and enemyIsM1ing(enemy) then
 					target = enemy
 				end
 			end
-			if shouldBlock then
+			if target then
 				if not blocking then
 					blocking = true
 					pcall(function() BlockService.Activated:Fire(target) end)
+					punishM1(target)
 				end
 			else
 				releaseBlock()
@@ -342,7 +379,16 @@ local Defense = CombatTab:AddLeftGroupbox("Defense", "shield")
 Defense:AddToggle("AutoBlock", {
 	Text = "Auto Block",
 	Default = false,
-	Tooltip = "Blocks when an enemy is close and roughly in front of you. Failing to face the attack breaks your block (server rule).",
+	Tooltip = "Blocks ONLY when an enemy within range starts an M1 attack at you. Failing to face the attack breaks your block (server rule).",
+})
+Defense:AddToggle("M1Punish", {
+	Text = "M1 Punish",
+	Default = true,
+	Tooltip = "Auto-melees the attacker shortly after your block stops their M1.",
+})
+Defense:AddSlider("PunishDelay", {
+	Text = "Punish Delay",
+	Default = 0.2, Min = 0.05, Max = 0.6, Rounding = 2, Suffix = "s",
 })
 Defense:AddSlider("BlockRange", {
 	Text = "Block Range",
