@@ -5031,7 +5031,7 @@ local function MainConnection()
                         LobbyParried = false,
                         LobbyLastParry = os.clock(),
                         TargetConn = Ball:GetAttributeChangedSignal('target'):Connect(function()
-                            ACHAOTICDATA.Global.AutoParryParried = false
+                            ACHAOTICDATA.Parry[Ball].LastParry = 0
                         end)
                     }
                 end
@@ -5045,7 +5045,8 @@ local function MainConnection()
                     ACHAOTICDATA.Global.AutoParryParried = false
                 end)
 
-                if os.clock() - ACHAOTICDATA.Parry[Ball].LastParry < 0.08 then
+                local LastParry = ACHAOTICDATA.Parry[Ball].LastParry
+                if LastParry > 0 and os.clock() - LastParry < 5 then
                     continue
                 end
 
@@ -5088,9 +5089,6 @@ local function MainConnection()
                 if ball_target == tostring(ACHAOTICDATA.Player.LocalPlayer) and distance <= parry_accuracy and distance >= 3.5 then
                     local parry_time = os.clock()
                     local time_view = parry_time - ACHAOTICDATA.Parry[Ball].LastParry
-                    if time_view < 0.08 then
-                        continue
-                    end
                     if time_view > 0.25 and ACHAOTICDATA.Config.AutoParry.AnimationFix and ACHAOTICDATA.Config.ParrySettings.ParryMethod ~= "Legit" then
                         PlayParry_Animation()
                     end
@@ -5132,10 +5130,7 @@ local function MainConnection()
                 end
 
                 if ACHAOTICDATA.Parry[Ball].LobbyParried then
-                    if os.clock() - ACHAOTICDATA.Parry[Ball].LobbyLastParry < 0.15 then
-                        continue
-                    end
-                    ACHAOTICDATA.Parry[Ball].LobbyParried = false
+                    continue
                 end
 
                 local Ball_Target = Ball:GetAttribute('target')
