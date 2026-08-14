@@ -5057,7 +5057,6 @@ local function MainConnection()
                 local ping_lead = math.clamp(ping / 1000, 0.02, 0.25)
                 local speed_lead = math.max(0, (speed - 400) / 1500)
                 local lead_time = ping_lead + 0.15 + speed_lead
-                local time_to_impact = speed > 0 and (distance / speed) or 0
                 local parry_accuracy = math.clamp(speed * lead_time * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier, 4, 400)
                 local curved = IsBall_Curved(Ball, ping, GetCharacter())
 
@@ -5086,7 +5085,7 @@ local function MainConnection()
                     end
                 end
 
-                if ball_target == tostring(ACHAOTICDATA.Player.LocalPlayer) and distance <= parry_accuracy and distance >= 3.5 and time_to_impact <= lead_time * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier then
+                if ball_target == tostring(ACHAOTICDATA.Player.LocalPlayer) and distance <= parry_accuracy and distance >= 3.5 then
                     local parry_time = os.clock()
                     local time_view = parry_time - ACHAOTICDATA.Parry[Ball].LastParry
                     if time_view < 0.08 then
@@ -5147,13 +5146,12 @@ local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
                 local Ping_Lead = math.clamp(Ping / 1000, 0.02, 0.25)
                 local Speed_Lead = math.max(0, (Speed - 400) / 1500)
                 local Lead_Time = Ping_Lead + 0.15 + Speed_Lead
-                local Time_To_Impact = Speed > 0 and (Distance / Speed) or 0
                 local Parry_Accuracy = math.clamp(Speed * Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier, 4, 400)
                 local Curved = false --IsBall_Curved(Ball, Ping, GetCharacter())
 
                 local CurveVaildation = Curved and ACHAOTICDATA.Config.LobbyAutoParry.AntiCurveEnabled
 
-                if Ball_Target == tostring(ACHAOTICDATA.Player.LocalPlayer) and Distance <= Parry_Accuracy and Distance >= 3.5 and Time_To_Impact <= Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier and not CurveVaildation then
+                if Ball_Target == tostring(ACHAOTICDATA.Player.LocalPlayer) and Distance <= Parry_Accuracy and Distance >= 3.5 and not CurveVaildation then
                     local Parry_Time = os.clock()
                     local Time_View = Parry_Time - (ACHAOTICDATA.Parry[Ball].LobbyLastParry)
                     if Time_View > 0.25 and ACHAOTICDATA.Config.LobbyAutoParry.AnimationFix and ACHAOTICDATA.Config.ParrySettings.ParryMethod ~= "Legit" then
