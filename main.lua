@@ -7236,6 +7236,8 @@ end
 ManualSpamParryUIService:Visible(ACHAOTICDATA.Config.ManualSpamParry.UI)
 TriggerBotUIService:Visible(ACHAOTICDATA.Config.TriggerBot.UI)
 ImmortalityUIService:Visible(Immortality.UI)
+BallStatsUIService:Visible(ACHAOTICDATA.Config.BallStats.Enabled)
+StatsUIService:Visible(ACHAOTICDATA.Config.ClientStats.Enabled)
 
 NeverZen:Track(RunService.Heartbeat:Connect(LoopConnection))
 
