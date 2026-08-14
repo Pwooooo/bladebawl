@@ -203,79 +203,71 @@ function MovementController:DashRequest()
 	return oldDashRequest()
 end
 
---[[ Auto Blackflash (Yuji) - press "3" driven
-1st press of 3 (Cursed Strikes) is forwarded - its 3 punches feed the M1 chain
-2nd press of 3 -> script dashes behind and times the follow-up M1 = Black Flash ]]
-local scriptFiring = false
-local phase = 0 -- 0 = idle, 1 = flurry running, 2 = primed (waiting for the 2nd press)
-local primeWindowT = 1.2
-
-local function resetPhase()
-	phase = 0
+--[[ No Cooldown (Yuji black flash loop)
+Loops: Cursed Strikes (feeds the M1 chain) -> dash behind enemy -> timed M1 = Black Flash.
+Casts chain back to back - server still gates each individual cast. ]]
+local function getSkillItem(key)
+	local ch = LocalPlayer.Character
+	if not ch or not ch:FindFirstChild("Moveset") then
+		return nil
+	end
+	for _, item in ch.Moveset:GetChildren() do
+		if item:GetAttribute("Key") == key and item:GetAttribute("Service") then
+			return item
+		end
+	end
+	return nil
 end
 
-local function scriptMelee()
-	scriptFiring = true
-	local ok = pcall(function() ToolController:Melee() end)
-	scriptFiring = false
-	return ok
+local function fireCursedStrikes()
+	local item = getSkillItem(3)
+	if not item then
+		return false
+	end
+	local ok, sv = pcall(function()
+		return Knit.GetService(item:GetAttribute("Service"))
+	end)
+	if not ok or not sv or not sv.Activated then
+		return false
+	end
+	local ok2, target = pcall(function() return ToolController:GetTarget() end)
+	if not ok2 then target = nil end
+	pcall(function() sv.Activated:Fire(item, target) end)
+	return true
 end
 
 local function blackflashFinisher()
 	local hrp = getHRP()
 	local tgt = getNearestEnemy(12)
 	if not (running and hrp and tgt and tgt:FindFirstChild("HumanoidRootPart")) then
-		return false
+		return
 	end
 	if Toggles.DashBehind.Value then
 		faceTarget(tgt, hrp)
 	end
 	fireDash("Front")
 	task.wait(0.02)
-	if running then scriptMelee() end
-	return true
+	if running then
+		pcall(function() ToolController:Melee() end)
+	end
 end
 
--- returns true when the press was consumed by the blackflash flow
-local function handleKeyThree()
-	if not Toggles.AutoBlackflash.Value then
-		return false
+task.spawn(function()
+	while running do
+		if Toggles.AutoBlackflash.Value then
+			local hrp = getHRP()
+			local tgt = getNearestEnemy(12)
+			if hrp and tgt then
+				fireCursedStrikes()
+				task.wait(Options.BfInterval.Value)
+				blackflashFinisher()
+			end
+			task.wait(Options.LoopDelay.Value)
+		else
+			task.wait(0.2)
+		end
 	end
-	if phase == 0 then
-		phase = 1
-		task.spawn(function()
-			task.wait(Options.BfInterval.Value)
-			if phase ~= 1 or not running then resetPhase() return end
-			phase = 2
-			task.wait(primeWindowT)
-			if phase == 2 then resetPhase() end
-		end)
-		return false -- forward: Cursed Strikes fires, its punches feed the chain
-	elseif phase == 2 then
-		resetPhase()
-		task.spawn(function()
-			blackflashFinisher()
-		end)
-		return true -- consumed: dash behind + timed M1 = Black Flash
-	end
-	return true -- flurry in progress: swallow repeat presses
-end
-
-local oldUseKey = ToolController.UseKey
-function ToolController:UseKey(key, action)
-	if action == "Activated" and key == 3 and handleKeyThree() then
-		return
-	end
-	return oldUseKey(self, key, action)
-end
-
-local oldUseTool = ToolController.UseTool
-function ToolController:UseTool(item, action)
-	if action == "Activated" and item and item.GetAttribute and item:GetAttribute("Key") == 3 and handleKeyThree() then
-		return
-	end
-	return oldUseTool(self, item, action)
-end
+end)
 
 --[[ UI ]]
 local Window = Library:CreateWindow({
@@ -305,13 +297,10 @@ Defense:AddSlider("BlockAngle", {
 
 local Offense = CombatTab:AddRightGroupbox("Offense", "zap")
 Offense:AddToggle("AutoBlackflash", {
-	Text = "Auto Blackflash (Yuji)",
+	Text = "No Cooldown",
 	Default = false,
 	Risky = true,
-	Tooltip = "Press 3 (Cursed Strikes) once - its punches feed the M1 chain. Press 3 again and the script dashes behind + times the follow-up M1 into a Black Flash. Server validated.",
-})
-	:AddKeyPicker("BlackflashKey", {
-	Default = "V", SyncToggleState = true, Text = "Auto Blackflash", NoUI = false,
+	Tooltip = "Loops Cursed Strikes -> dash behind + timed M1 (Black Flash) continuously, chaining casts with no cooldown between them (server still gates each cast).",
 })
 Offense:AddToggle("DashBehind", {
 	Text = "Dash Behind Enemy",
@@ -321,9 +310,14 @@ Offense:AddToggle("DashBehind", {
 Offense:AddSlider("BfInterval", {
 	Text = "Flurry Time",
 	Default = 0.55, Min = 0.3, Max = 1.0, Rounding = 2, Suffix = "s",
-	Tooltip = "Time to let Cursed Strikes' 3 punches land before the next 3 press arms the Black Flash.",
+	Tooltip = "Time for Cursed Strikes' punches to feed the M1 chain before the Black Flash M1.",
 })
-Offense:AddLabel("3 key flow: 1st press = Cursed Strikes, 2nd press = timed Black Flash (2 presses total). Yuji only.")
+Offense:AddSlider("LoopDelay", {
+	Text = "Loop Delay",
+	Default = 0.9, Min = 0.4, Max = 2.5, Rounding = 2, Suffix = "s",
+	Tooltip = "Pause after each Black Flash before starting the next loop.",
+})
+Offense:AddLabel("Loops automatically while on - no key presses needed. Yuji only.")
 
 local LockBox = CombatTab:AddLeftGroupbox("Lock Assist", "crosshair")
 LockBox:AddToggle("AutoLock", {
