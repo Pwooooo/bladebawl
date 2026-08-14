@@ -77,6 +77,13 @@ local function fireDash(dir)
 	end)
 end
 
+local function dashReady()
+	local ch = LocalPlayer.Character
+	if not ch then return false end
+	local info = ch:FindFirstChild("Info")
+	return info and not info:FindFirstChild("NoDash")
+end
+
 --[[ Auto Block ]]
 local function releaseBlock()
 	if blocking then
@@ -183,7 +190,7 @@ end)
 --[[ Dash Assist (front toward lock target / side around target) ]]
 local oldDashRequest = MovementController.DashRequest
 function MovementController:DashRequest()
-	if Toggles.DashAssist.Value then
+	if Toggles.DashAssist.Value and dashReady() then
 		local hrp = getHRP()
 		local enemy = MovementController.LockOn or getNearestEnemy(Options.LockRange.Value)
 		if hrp and enemy and enemy:FindFirstChild("HumanoidRootPart") then
@@ -247,7 +254,7 @@ local function blackflashFinisher()
 	end
 	fireDash("Front")
 	task.wait(0.02)
-	if running then
+	if running and dashReady() then
 		pcall(function() ToolController:Melee() end)
 	end
 end
@@ -257,7 +264,7 @@ task.spawn(function()
 		if Toggles.AutoBlackflash.Value then
 			local hrp = getHRP()
 			local tgt = getNearestEnemy(12)
-			if hrp and tgt then
+			if hrp and tgt and dashReady() then
 				fireCursedStrikes()
 				task.wait(Options.BfInterval.Value)
 				blackflashFinisher()
