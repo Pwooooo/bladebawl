@@ -18,6 +18,7 @@ local LocalPlayer = Players.LocalPlayer
 local Knit = require(game.ReplicatedStorage.Knit.Knit)
 local MovementService = Knit.GetService("MovementService")
 local BlockService = Knit.GetService("BlockService")
+local HitboxService = Knit.GetService("HitboxService")
 local ToolController = Knit.GetController("ToolController")
 local MovementController = Knit.GetController("MovementController")
 
@@ -27,6 +28,10 @@ local CFG = getgenv().JJS
 if CFG.Hook then
 	pcall(CFG.Hook.revert)
 	CFG.Hook = nil
+end
+if CFG.HitboxConn then
+	pcall(function() CFG.HitboxConn:Disconnect() end)
+	CFG.HitboxConn = nil
 end
 
 local firstLoad = not CFG.Loaded
@@ -102,21 +107,35 @@ local function dashReady()
 	return info and not info:FindFirstChild("NoDash")
 end
 
---[[ Auto Block: only engages when an enemy within range starts an M1 attack.
-After the block absorbs a hit, M1 Punish auto-melees the attacker. ]]
-local M1_PATTERNS = { "m1", "combo", "punch", "slash", "melee", "basic", "hit" }
-local function enemyIsM1ing(enemy)
-	local hum = enemy and enemy:FindFirstChild("Humanoid")
-	if not hum then return false end
-	for _, t in ipairs(hum:GetPlayingAnimationTracks()) do
-		local name = t.Animation and t.Animation.Name or ""
-		local n = name:lower()
-		for _, pat in ipairs(M1_PATTERNS) do
-			if n:find(pat, 1, true) then return true end
+--[[ Auto Block: the server broadcasts every active attack hitbox to all
+clients via HitboxService.Hitbox. When an incoming hitbox overlaps our
+character, the attack is contacting us RIGHT NOW - block that instant.
+M1 Punish fires exactly ONE melee per blocked exchange (lockout prevents
+chaining into the full 4-hit combo). ]]
+local hitboxHit = false
+local hitboxConn = HitboxService.Hitbox.OnClientEvent:Connect(function(...)
+	local args = { ... }
+	local pos = nil
+	local size = nil
+	for i = 1, #args do
+		local a = args[i]
+		if pos == nil then
+			if typeof(a) == "Vector3" then pos = a
+			elseif typeof(a) == "CFrame" then pos = a.Position end
+		elseif size == nil and typeof(a) == "number" and a > 2 then
+			size = a
 		end
+		if pos and size then break end
 	end
-	return false
-end
+	if not pos then return end
+	local hrp = getHRP()
+	if not hrp then return end
+	local flat = Vector3.new(pos.X - hrp.Position.X, 0, pos.Z - hrp.Position.Z).Magnitude
+	if flat <= (size or 4) / 2 + 3.5 then
+		hitboxHit = true
+	end
+end)
+CFG.HitboxConn = hitboxConn
 
 local function releaseBlock()
 	if blocking then
@@ -125,13 +144,12 @@ local function releaseBlock()
 	end
 end
 
-local punishPending = false
+local lastPunish = 0
 local function punishM1(target)
-	if punishPending then return end
-	punishPending = true
+	if tick() - lastPunish < 0.5 then return end
+	lastPunish = tick()
 	task.spawn(function()
 		task.wait(Options.PunishDelay.Value)
-		punishPending = false
 		if CFG.Alive and Toggles.M1Punish.Value and target and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") then
 			local hum = target.Humanoid
 			local hrp = getHRP()
@@ -153,22 +171,24 @@ task.spawn(function()
 		task.wait(0.05)
 		if not Toggles.AutoBlock.Value then
 			releaseBlock()
+			hitboxHit = false
 			continue
 		end
 		local hrp = getHRP()
 		if not hrp then releaseBlock() else
 			local enemy = getNearestEnemy(Options.BlockRange.Value)
 			local target = nil
-			if enemy and enemy:FindFirstChild("HumanoidRootPart") then
+			if hitboxHit and enemy and enemy:FindFirstChild("HumanoidRootPart") then
 				local toEnemy = enemy.HumanoidRootPart.Position - hrp.Position
 				local dist = toEnemy.Magnitude
 				toEnemy = toEnemy.Magnitude > 0.01 and toEnemy.Unit or Vector3.new(0, 0, 1)
 				local facing = hrp.CFrame.LookVector
 				local dot = (Vector3.new(facing.X, 0, facing.Z).Unit):Dot(Vector3.new(toEnemy.X, 0, toEnemy.Z).Unit)
-				if dist <= Options.BlockRange.Value + 2 and dot >= math.cos(math.rad(Options.BlockAngle.Value)) and enemyIsM1ing(enemy) then
+				if dist <= Options.BlockRange.Value + 2 and dot >= math.cos(math.rad(Options.BlockAngle.Value)) then
 					target = enemy
 				end
 			end
+			hitboxHit = false
 			if target then
 				if not blocking then
 					blocking = true
@@ -379,7 +399,7 @@ local Defense = CombatTab:AddLeftGroupbox("Defense", "shield")
 Defense:AddToggle("AutoBlock", {
 	Text = "Auto Block",
 	Default = false,
-	Tooltip = "Blocks ONLY when an enemy within range starts an M1 attack at you. Failing to face the attack breaks your block (server rule).",
+	Tooltip = "Blocks only in the exact moment an incoming attack hitbox touches you. Failing to face the attack breaks your block (server rule).",
 })
 Defense:AddToggle("M1Punish", {
 	Text = "M1 Punish",
@@ -452,6 +472,10 @@ end
 
 Library:OnUnload(function()
 	CFG.Alive = false
+	if CFG.HitboxConn then
+		pcall(function() CFG.HitboxConn:Disconnect() end)
+		CFG.HitboxConn = nil
+	end
 	if hookInstalled and oldNamecall and wsMt then
 		pcall(function() hookmetamethod(wsMt, "__namecall", oldNamecall) end)
 	end
