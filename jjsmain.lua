@@ -21,15 +21,6 @@ local BlockService = Knit.GetService("BlockService")
 local ToolController = Knit.GetController("ToolController")
 local MovementController = Knit.GetController("MovementController")
 
-local ControlModule = require(LocalPlayer.PlayerScripts.PlayerModule.ControlModule)
-local function getMoveVector()
-	local ok, mv = pcall(function() return ControlModule:GetMoveVector() end)
-	if not ok or typeof(mv) ~= "Vector3" then
-		return Vector3.new(0, 0, 0)
-	end
-	return mv
-end
-
 getgenv().JJS = getgenv().JJS or {}
 local CFG = getgenv().JJS
 
@@ -210,25 +201,32 @@ end)
 
 --[[ Dash: Q always works without chaining into the game's own DashRequest
 (which can crash on a nil MovementService proxy in fresh sessions).
-Locks and dashes around the target when Dash Assist is on and a target is in
-range; otherwise dashes relative to the camera like the game would. ]]
+Direction uses the game's exact mapping: Humanoid.MoveDirection dotted with
+the flattened camera axes (front/back priority, then right/left).
+Cooldown mirrors the game's client gates: 0.4s front, 2s side/back. ]]
+local lastDash = 0
+local DASH_CD = { Front = 0.4, Back = 2, Left = 2, Right = 2 }
+
 local function dashDirection()
+	local ch = LocalPlayer.Character
+	local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+	local hum = ch and ch:FindFirstChild("Humanoid")
 	local cam = workspace.CurrentCamera
-	local mv = -getMoveVector()
-	if not cam then return "Front" end
-	local fwd = (cam.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
-	local right = (cam.CFrame.RightVector * Vector3.new(1, 0, 1)).Unit
-	if fwd.Magnitude < 0.01 then fwd = Vector3.new(0, 0, -1) end
-	if right.Magnitude < 0.01 then right = Vector3.new(1, 0, 0) end
-	if math.abs(mv.X) < 0.2 and math.abs(mv.Z) < 0.2 then
+	if not (hrp and hum and cam) then return "Front" end
+	local look = cam.CFrame.LookVector
+	local v2 = CFrame.new(hrp.Position, hrp.Position + Vector3.new(look.X, 0, look.Z))
+	local f = math.round(hum.MoveDirection:Dot(v2.LookVector))
+	local r = math.round(hum.MoveDirection:Dot(v2.RightVector))
+	if f == 1 then
 		return "Front"
+	elseif f == -1 then
+		return "Back"
+	elseif r == 1 then
+		return "Right"
+	elseif r == -1 then
+		return "Left"
 	end
-	local f = mv:Dot(fwd)
-	local r = mv:Dot(right)
-	if math.abs(f) >= math.abs(r) then
-		return f > 0 and "Front" or "Back"
-	end
-	return r > 0 and "Right" or "Left"
+	return "Front"
 end
 
 function MovementController:DashRequest()
@@ -240,17 +238,14 @@ function MovementController:DashRequest()
 			local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
 			if dist <= Options.LockRange.Value then
 				faceTarget(enemy, hrp)
-				local mv = -getMoveVector()
-				if math.abs(mv.X) > 0.3 then
-					fireDash(mv.X > 0 and "Right" or "Left")
-				else
-					fireDash("Front")
-				end
-				return
 			end
 		end
 	end
-	fireDash(dashDirection())
+	local dir = dashDirection()
+	local now = tick()
+	if now - lastDash < (DASH_CD[dir] or 2) then return end
+	lastDash = now
+	fireDash(dir)
 end
 
 --[[ No Cooldown (Yuji black flash loop)
