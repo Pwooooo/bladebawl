@@ -287,9 +287,7 @@ local function blackflashFinisher()
 	if not (CFG.Alive and hrp and tgt and tgt:FindFirstChild("HumanoidRootPart")) then
 		return
 	end
-	if Toggles.DashBehind.Value then
-		faceTarget(tgt, hrp)
-	end
+	faceTarget(tgt, hrp)
 	fireDash("Front")
 	task.wait(0.02)
 	if CFG.Alive and dashReady() then
@@ -304,10 +302,10 @@ task.spawn(function()
 			local tgt = getNearestEnemy(12)
 			if hrp and tgt and dashReady() then
 				fireCursedStrikes()
-				task.wait(Options.BfInterval.Value)
+				task.wait(0.55)
 				blackflashFinisher()
 			end
-			task.wait(Options.LoopDelay.Value)
+			task.wait(0.9)
 		else
 			task.wait(0.2)
 		end
@@ -348,22 +346,6 @@ Offense:AddToggle("AutoBlackflash", {
 	Risky = true,
 	Tooltip = "Loops Cursed Strikes -> dash behind + timed M1 (Black Flash) continuously, chaining casts with no cooldown between them (server still gates each cast).",
 })
-Offense:AddToggle("DashBehind", {
-	Text = "Dash Behind Enemy",
-	Default = true,
-	Tooltip = "Faces the enemy and dashes through them before the Black Flash, hitting from behind. Off = dash in current facing (still blackflashes).",
-})
-Offense:AddSlider("BfInterval", {
-	Text = "Flurry Time",
-	Default = 0.55, Min = 0.3, Max = 1.0, Rounding = 2, Suffix = "s",
-	Tooltip = "Time for Cursed Strikes' punches to feed the M1 chain before the Black Flash M1.",
-})
-Offense:AddSlider("LoopDelay", {
-	Text = "Loop Delay",
-	Default = 0.9, Min = 0.4, Max = 2.5, Rounding = 2, Suffix = "s",
-	Tooltip = "Pause after each Black Flash before starting the next loop.",
-})
-Offense:AddLabel("Loops automatically while on - no key presses needed. Yuji only.")
 
 local LockBox = CombatTab:AddLeftGroupbox("Lock Assist", "crosshair")
 LockBox:AddToggle("AutoLock", {
