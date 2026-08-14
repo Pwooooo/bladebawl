@@ -4827,6 +4827,7 @@ local function Parry()
     local CameraCenter = Camera.ViewportSize / 2
     local CameraData = {CameraCenter.X, CameraCenter.Y}
     ParryRemote:FireServer(Hash1, Hash2, Hash3(), 0.025, Camera.CFrame, PlayerPositions, CameraData, false)
+    ACHAOTICDATA.Global.PingStart = os.clock()
 end
 local ExecuteRemoteFireServer = function(ParryData)
     Parry()
@@ -4874,6 +4875,42 @@ local FireParry = function()
         end)
     end
 end
+
+local function StartRealtimePingMeter()
+    ACHAOTICDATA.Global.RealtimePing = 100
+    ACHAOTICDATA.Global.PingStart = nil
+    ACHAOTICDATA.Global.PingFresh = 0
+    ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
+        local Start = ACHAOTICDATA.Global.PingStart
+        if Start then
+            ACHAOTICDATA.Global.PingStart = nil
+            local Measured = math.clamp((os.clock() - Start) * 1000, 15, 400)
+            ACHAOTICDATA.Global.RealtimePing = Measured
+            ACHAOTICDATA.Global.PingFresh = os.clock()
+        end
+    end)
+    local Meter = game.Stats
+    local ema = 100
+    task.spawn(function()
+        while true do
+            task.wait(0.1)
+            local ok, raw = pcall(function()
+                return Meter.Network.ServerStatsItem['Data Ping']:GetValue()
+            end)
+            if ok and raw > 0 then
+                ema = ema * 0.85 + raw * 0.15
+            end
+            if os.clock() - ACHAOTICDATA.Global.PingFresh < 2 then
+                ema = ACHAOTICDATA.Global.RealtimePing
+            end
+            if ACHAOTICDATA.Global.PingStart and os.clock() - ACHAOTICDATA.Global.PingStart > 2 then
+                ACHAOTICDATA.Global.PingStart = nil
+            end
+            ACHAOTICDATA.Global.RealtimePing = ema
+        end
+    end)
+end
+task.spawn(StartRealtimePingMeter)
 
 local function Get_Balls()
     local BallInstances = {}
@@ -5015,7 +5052,7 @@ local function MainConnection()
                 local ball_target = Ball:GetAttribute('target')
                 local velocity = zoomies.VectorVelocity
                 local distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
-                local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+                local ping = ACHAOTICDATA.Global.RealtimePing
                 local speed = velocity.Magnitude
                 local ping_lead = math.clamp(ping / 1000, 0.02, 0.25)
                 local speed_lead = math.max(0, (speed - 400) / 1500)
@@ -5105,7 +5142,7 @@ local function MainConnection()
                 local Ball_Target = Ball:GetAttribute('target')
                 local Velocity = Zoomies.VectorVelocity
 local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude - 5
-                local Ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+                local Ping = ACHAOTICDATA.Global.RealtimePing
                 local Speed = Velocity.Magnitude
                 local Ping_Lead = math.clamp(Ping / 1000, 0.02, 0.25)
                 local Speed_Lead = math.max(0, (Speed - 400) / 1500)
@@ -5152,7 +5189,7 @@ local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
                     return 
                 end
                 
-                local Ping = ACHAOTICASSETS.ServerStatsItem["Data Ping"]:GetValue()
+                local Ping = ACHAOTICDATA.Global.RealtimePing
                 local PingFactor = Ping / 500
                 local BallSpeed = Zoomies.VectorVelocity.Magnitude
                 
@@ -7143,7 +7180,7 @@ local function RefreshVM(deltaTime)
             Fps = (math.floor(os.clock() - FpsStart >= 1 and #FrameUpdateTable or #FrameUpdateTable / (os.clock() - FpsStart)))
         end
 
-        Ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+        Ping = ACHAOTICDATA.Global.RealtimePing
         Memory = Stats:GetTotalMemoryUsageMb()
         Cpu = math.clamp(Memory / 50, 1, 100)
 
