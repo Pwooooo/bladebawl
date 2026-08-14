@@ -4884,23 +4884,6 @@ if ACHAOTICDATA.Global.Parries <= 1000 then
 end
 
 do
-    local RealTweenService = game:GetService('TweenService')
-    local TweenHookInstalled = false
-    local InstallTweenHook = function()
-        local HookedTweenCreate = RealTweenService.Create
-        RealTweenService.Create = function(self, target, info, goal)
-            if typeof(target) == 'Instance' and target:IsA('UIGradient') and target.Parent and target.Parent:IsA('GuiObject') and (target.Parent.Name == 'Block' or target.Parent.Name == 'Ability') then
-                task.defer(function()
-                    pcall(function()
-                        target.Offset = Vector2.new(0, 0.5)
-                    end)
-                end)
-                return HookedTweenCreate(self, target, TweenInfo.new(0), {Offset = Vector2.new(0, 0.5)})
-            end
-            return HookedTweenCreate(self, target, info, goal)
-        end
-    end
-    TweenHookInstalled = pcall(InstallTweenHook)
     task.spawn(function()
         local Hotbar
         pcall(function()
