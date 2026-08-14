@@ -21,7 +21,14 @@ local BlockService = Knit.GetService("BlockService")
 local ToolController = Knit.GetController("ToolController")
 local MovementController = Knit.GetController("MovementController")
 
-local GetControls = require(LocalPlayer.PlayerScripts.PlayerModule.ControlModule).GetMoveVector
+local ControlModule = require(LocalPlayer.PlayerScripts.PlayerModule.ControlModule)
+local function getMoveVector()
+	local ok, mv = pcall(function() return ControlModule:GetMoveVector() end)
+	if not ok or typeof(mv) ~= "Vector3" then
+		return Vector3.new(0, 0, 0)
+	end
+	return mv
+end
 
 getgenv().JJS = getgenv().JJS or {}
 local CFG = getgenv().JJS
@@ -207,7 +214,7 @@ Locks and dashes around the target when Dash Assist is on and a target is in
 range; otherwise dashes relative to the camera like the game would. ]]
 local function dashDirection()
 	local cam = workspace.CurrentCamera
-	local mv = GetControls()
+	local mv = getMoveVector()
 	if not cam then return "Front" end
 	local fwd = (cam.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
 	local right = (cam.CFrame.RightVector * Vector3.new(1, 0, 1)).Unit
@@ -233,7 +240,7 @@ function MovementController:DashRequest()
 			local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
 			if dist <= Options.LockRange.Value then
 				faceTarget(enemy, hrp)
-				local mv = GetControls()
+				local mv = getMoveVector()
 				if math.abs(mv.X) > 0.3 then
 					fireDash(mv.X > 0 and "Right" or "Left")
 				else
