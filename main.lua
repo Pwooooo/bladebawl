@@ -5008,19 +5008,18 @@ local function MainConnection()
                     ACHAOTICDATA.Global.AutoParryParried = false
                 end)
 
-                if ACHAOTICDATA.Global.AutoParryParried then
+                if os.clock() - ACHAOTICDATA.Parry[Ball].LastParry < 0.08 then
                     continue
                 end
 
                 local ball_target = Ball:GetAttribute('target')
                 local velocity = zoomies.VectorVelocity
                 local distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
-                local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-                local ping_threshold = math.clamp(ping / 10, 5, 17)
+                local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
                 local speed = velocity.Magnitude
-                local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-                local speed_divisor = (2.4 + capped_speed_diff * 0.002) * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier
-                local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
+                local ping_lead = math.clamp(ping / 1000, 0.03, 0.5)
+                local travel = speed * ping_lead * 0.6 * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier
+                local parry_accuracy = math.clamp(travel + 4.5, 3.5, 115)
                 local curved = IsBall_Curved(Ball, ping * 10, GetCharacter())
 
                 ACHAOTICDATA.Global.AutoParryCurrentAccuracy = parry_accuracy
@@ -5051,6 +5050,9 @@ local function MainConnection()
                 if ball_target == tostring(ACHAOTICDATA.Player.LocalPlayer) and distance <= parry_accuracy then
                     local parry_time = os.clock()
                     local time_view = parry_time - ACHAOTICDATA.Parry[Ball].LastParry
+                    if time_view < 0.08 then
+                        continue
+                    end
                     if time_view > 0.25 and ACHAOTICDATA.Config.AutoParry.AnimationFix and ACHAOTICDATA.Config.ParrySettings.ParryMethod ~= "Legit" then
                         PlayParry_Animation()
                     end
@@ -5058,11 +5060,6 @@ local function MainConnection()
                     ACHAOTICDATA.Parry[Ball].LastParry = parry_time
                     ACHAOTICDATA.Global.AutoParryParried = true
                 end
-                local last_parrys = tick()
-                repeat
-                    RunService.PreSimulation:Wait()
-                until (tick() - last_parrys) >= 1 or not ACHAOTICDATA.Global.AutoParryParried
-                ACHAOTICDATA.Global.AutoParryParried = false
             end
         else
             ACHAOTICDATA.Global.AutoParryCurrentAccuracy = 0
@@ -5097,19 +5094,19 @@ local function MainConnection()
                 end
 
                 if ACHAOTICDATA.Parry[Ball].LobbyParried then
-                    return
+                    if os.clock() - ACHAOTICDATA.Parry[Ball].LobbyLastParry < 0.15 then
+                        continue
+                    end
+                    ACHAOTICDATA.Parry[Ball].LobbyParried = false
                 end
 
                 local Ball_Target = Ball:GetAttribute('target')
                 local Velocity = Zoomies.VectorVelocity
                 local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude - 5
                 local Ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-                local Ping_Threshold = math.clamp(Ping / 20, 5, 17)
-                local Speed = Velocity.Magnitude * 1.5
-                local cappedSpeedDiff = math.min(math.max(Speed - 9.5, 0), 650)
-                local speed_divisor_base = 2.4 + cappedSpeedDiff * 0.002
-                local speed_divisor = speed_divisor_base * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier
-                local Parry_Accuracy = Ping_Threshold + math.max(Speed / speed_divisor, 9.5) + (Distance / 75)
+                local Ping_Lead = math.clamp(Ping / 1000, 0.03, 0.5)
+                local Travel = Velocity.Magnitude * Ping_Lead * 0.6 * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier
+                local Parry_Accuracy = math.clamp(Travel + 4.5, 3.5, 115)
                 local Curved = false --IsBall_Curved(Ball, Ping, GetCharacter())
 
                 local CurveVaildation = Curved and ACHAOTICDATA.Config.LobbyAutoParry.AntiCurveEnabled
@@ -5126,11 +5123,6 @@ local function MainConnection()
                     ACHAOTICDATA.Parry[Ball].LobbyLastParry = Parry_Time
                     ACHAOTICDATA.Parry[Ball].LobbyParried = true
                 end
-                local Last_Parrys = tick()
-                repeat
-                    RunService.PreSimulation:Wait()
-                until (tick() - Last_Parrys) >= 1 or not ACHAOTICDATA.Parry[Ball].LobbyParried
-                ACHAOTICDATA.Parry[Ball].LobbyParried = false
             end
         end
 
@@ -5221,11 +5213,6 @@ local function MainConnection()
                     FireParry()
                     TriggerBotParried = true
                 end
-                local TriggerBot_Last_Parrys = tick()
-                repeat
-                    RunService.PreSimulation:Wait()
-                until (tick() - TriggerBot_Last_Parrys) >= 1 or not TriggerBotParried
-                TriggerBotParried = false
             end
         end
         if #BallsList <= 0 then
