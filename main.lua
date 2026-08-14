@@ -5028,10 +5028,14 @@ local function MainConnection()
                         last_warping = 0,
                         curving = tick(),
                         LastParry = 0,
+                        RefireAt = 0,
+                        ParryAttempts = 0,
                         LobbyParried = false,
                         LobbyLastParry = os.clock(),
                         TargetConn = Ball:GetAttributeChangedSignal('target'):Connect(function()
                             ACHAOTICDATA.Parry[Ball].LastParry = 0
+                            ACHAOTICDATA.Parry[Ball].RefireAt = 0
+                            ACHAOTICDATA.Parry[Ball].ParryAttempts = 0
                         end)
                     }
                 end
@@ -5045,8 +5049,10 @@ local function MainConnection()
                     ACHAOTICDATA.Global.AutoParryParried = false
                 end)
 
-                local LastParry = ACHAOTICDATA.Parry[Ball].LastParry
-                if LastParry > 0 and os.clock() - LastParry < 5 then
+                if ACHAOTICDATA.Parry[Ball].ParryAttempts >= 3 then
+                    continue
+                end
+                if os.clock() < ACHAOTICDATA.Parry[Ball].RefireAt then
                     continue
                 end
 
@@ -5094,6 +5100,8 @@ local function MainConnection()
                     end
                     FireParry()
                     ACHAOTICDATA.Parry[Ball].LastParry = parry_time
+                    ACHAOTICDATA.Parry[Ball].RefireAt = parry_time + lead_time
+                    ACHAOTICDATA.Parry[Ball].ParryAttempts += 1
                     ACHAOTICDATA.Global.AutoParryParried = true
                 end
             end
@@ -5116,9 +5124,13 @@ local function MainConnection()
                         last_warping = 0,
                         curving = tick(),
                         LastParry = os.clock(),
+                        RefireAt = 0,
+                        LobbyAttempts = 0,
                         LobbyParried = false,
                         LobbyLastParry = os.clock(),
                         TargetConn = Ball:GetAttributeChangedSignal('target'):Connect(function()
+                            ACHAOTICDATA.Parry[Ball].RefireAt = 0
+                            ACHAOTICDATA.Parry[Ball].LobbyAttempts = 0
                             ACHAOTICDATA.Parry[Ball].LobbyParried = false
                         end)
                     }
@@ -5129,7 +5141,10 @@ local function MainConnection()
                     return
                 end
 
-                if ACHAOTICDATA.Parry[Ball].LobbyParried then
+                if ACHAOTICDATA.Parry[Ball].LobbyAttempts >= 3 then
+                    continue
+                end
+                if os.clock() < ACHAOTICDATA.Parry[Ball].RefireAt then
                     continue
                 end
 
@@ -5156,7 +5171,8 @@ local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
                     FireParry()
 
                     ACHAOTICDATA.Parry[Ball].LobbyLastParry = Parry_Time
-                    ACHAOTICDATA.Parry[Ball].LobbyParried = true
+                    ACHAOTICDATA.Parry[Ball].RefireAt = Parry_Time + Lead_Time
+                    ACHAOTICDATA.Parry[Ball].LobbyAttempts += 1
                 end
             end
         end
