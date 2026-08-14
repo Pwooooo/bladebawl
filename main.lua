@@ -4867,7 +4867,7 @@ local FireParry = function()
         firesignal(BlockButton.Activated)
     end
 
-if ACHAOTICDATA.Global.Parries <= 1000 then
+    if ACHAOTICDATA.Global.Parries <= 7 or (ACHAOTICDATA.Config.AutoSpamParry.Spamming or ACHAOTICDATA.Config.ManualSpamParry.Spamming) then
         ACHAOTICDATA.Global.Parries += 1
         task.delay(0.5, function()
             if ACHAOTICDATA.Global.Parries > 0 then
@@ -5052,7 +5052,7 @@ Ball:GetAttributeChangedSignal('target'):Once(function()
                 local ball_target = Ball:GetAttribute('target')
                 local velocity = zoomies.VectorVelocity
                 local distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude
-                local ping = ACHAOTICDATA.Global.RealtimePing or 30
+                local ping = math.min(ACHAOTICDATA.Global.RealtimePing or 30, 100)
                 local ping_threshold = math.clamp(ping / 10, 5, 17)
                 local speed = velocity.Magnitude
                 local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
@@ -5140,7 +5140,7 @@ Ball:GetAttributeChangedSignal('target'):Once(function()
                 local Ball_Target = Ball:GetAttribute('target')
                 local Velocity = Zoomies.VectorVelocity
                 local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude - 5
-                local Ping = ACHAOTICDATA.Global.RealtimePing or 30
+                local Ping = math.min(ACHAOTICDATA.Global.RealtimePing or 30, 100)
                 local Ping_Threshold = math.clamp(Ping / 20, 5, 17)
                 local Speed = Velocity.Magnitude * 1.5
                 local cappedSpeedDiff = math.min(math.max(Speed - 9.5, 0), 650)
@@ -5191,7 +5191,7 @@ Ball:GetAttributeChangedSignal('target'):Once(function()
                     return 
                 end
                 
-                local Ping = ACHAOTICDATA.Global.RealtimePing or 30
+                local Ping = math.min(ACHAOTICDATA.Global.RealtimePing or 30, 100)
                 local PingFactor = Ping / 500
                 local BallSpeed = Zoomies.VectorVelocity.Magnitude
                 
