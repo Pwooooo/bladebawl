@@ -4280,7 +4280,8 @@ local ACHAOTICDATA = {
             LobbyAutoParryAccuracy = 80,
             LobbySpeedDivisorMultiplier = 1.1,
             VisualiserParries = 0,
-            SafeMode = true
+            SafeMode = true,
+            RemoveCooldown = false
         }
     }
 }
@@ -4829,9 +4830,12 @@ local CameraCenter = Camera.ViewportSize / 2
     print(Hash3())
     pcall(function()
         ReplicatedStorage.Remotes.ParryButtonPress:FireServer()
-        ReplicatedStorage.Remotes.ResetAbilityCooldown:FireServer()
-        ReplicatedStorage.Remotes.EndCD:FireServer()
-        ReplicatedStorage.Remotes.SecondaryEndCD:FireServer()
+        if ACHAOTICDATA.Config.ParrySettings.RemoveCooldown then
+            ReplicatedStorage.Remotes.UnParry:FireServer()
+            ReplicatedStorage.Remotes.ResetAbilityCooldown:FireServer()
+            ReplicatedStorage.Remotes.EndCD:FireServer()
+            ReplicatedStorage.Remotes.SecondaryEndCD:FireServer()
+        end
     end)
     ParryRemote:FireServer(Hash1, Hash2, Hash3(), 0.025, Camera.CFrame, PlayerPositions, CameraData, false)
     ACHAOTICDATA.Global.PingStart = os.clock()
@@ -6227,6 +6231,14 @@ SpammingSection:AddSlider({
         Default = ACHAOTICDATA.Config.ParrySettings.SafeMode,
         Callback = function(value)
             ACHAOTICDATA.Config.ParrySettings.SafeMode = value
+        end,
+    })
+
+    ParrySystemSection:AddToggle({
+        Name = 'Remove Cooldown (risk)',
+        Default = ACHAOTICDATA.Config.ParrySettings.RemoveCooldown,
+        Callback = function(value)
+            ACHAOTICDATA.Config.ParrySettings.RemoveCooldown = value
         end,
     })
 
