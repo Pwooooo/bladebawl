@@ -4609,17 +4609,12 @@ local function GetParry_Data(curveDirection, IsInLobbyTrainning)
         ACHAOTICDATA.Global.LastInput == Enum.UserInputType.Keyboard
     )
     
-if isRelevantInput and not isMobile then
+    if isRelevantInput and not isMobile then
         local Mouse_Location = UserInputService:GetMouseLocation()
         Vector2_Mouse_Location = {Mouse_Location.X, Mouse_Location.Y}
     else
         local viewportSize = ACHAOTICASSETS.CurrentCamera.ViewportSize
         Vector2_Mouse_Location = {viewportSize.X / 2, viewportSize.Y / 2}
-    end
-    
-    if ACHAOTICDATA.Config.AutoSpamParry.Spamming or ACHAOTICDATA.Config.ManualSpamParry.Spamming then
-        Vector2_Mouse_Location[1] += math.random(-6, 6)
-        Vector2_Mouse_Location[2] += math.random(-6, 6)
     end
     
     if IsInLobbyTrainning then
@@ -5175,57 +5170,64 @@ Ball:GetAttributeChangedSignal('target'):Once(function()
             end
         end
 
-if ACHAOTICDATA.Config.AutoSpamParry.Enabled then
-            local SpamRoot = GetCharacter() and GetCharacter().PrimaryPart
-            ACHAOTICDATA.Config.AutoSpamParry.Spamming = false
-            if SpamRoot then
-                local SpamPing = ACHAOTICDATA.Global.RealtimePing or 30
-                local SpamPingLead = math.clamp(SpamPing / 20, 5, 17)
-                local SpamRootPos = SpamRoot.Position
-                local Closest_Entity = GetClosest_Player()
-                local SpamClashDistance = math.huge
-                if Closest_Entity and Closest_Entity.PrimaryPart then
-                    SpamClashDistance = (SpamRootPos - Closest_Entity.PrimaryPart.Position).Magnitude
+        if ACHAOTICDATA.Config.AutoSpamParry.Enabled then
+            for _, Ball in pairs(BallsList) do
+                local Zoomies = Ball:FindFirstChild('zoomies')
+                if not Zoomies then 
+                    ACHAOTICDATA.Config.AutoSpamParry.Spamming = false 
+                    return 
                 end
-                local SpamBestBall = nil
-                local SpamBestDistance = math.huge
-                local SpamBestCheck = 26
-                for _, Ball in pairs(BallsList) do
-                    local Zoomies = Ball:FindFirstChild('zoomies')
-                    if not Zoomies then
-                        continue
-                    end
-                    local SpamVelocity = Zoomies.VectorVelocity
-                    local SpamSpeed = SpamVelocity.Magnitude
-                    if SpamSpeed <= 1 then
-                        continue
-                    end
-                    local SpamBallPos = Ball.Position
-                    local SpamDistance = (SpamRootPos - SpamBallPos).Magnitude
-                    if SpamDistance <= 0.01 then
-                        continue
-                    end
-                    local SpamToMe = (SpamRootPos - SpamBallPos) / SpamDistance
-                    if SpamVelocity:Dot(SpamToMe) <= SpamSpeed * 0.2 then
-                        continue
-                    end
-                    if ACHAOTICDATA.Config.AutoSpamParry.DetectionMode == "Speed" and SpamSpeed < 60 then
-                        continue
-                    end
-                    local SpamCheck = math.clamp(math.floor(math.max(SpamSpeed / 5 + SpamPingLead, 26)), 26, 80)
-                    if SpamClashDistance > math.max(SpamCheck * 1.5, 55) then
-                        continue
-                    end
-                    if SpamDistance <= SpamCheck * 1.5 and SpamDistance < SpamBestDistance then
-                        SpamBestDistance = SpamDistance
-                        SpamBestCheck = SpamCheck
-                        SpamBestBall = Ball
-                    end
+
+                local Closest_Entity, Closest_Distance = GetClosest_Player()
+                local Root = GetCharacter() and GetCharacter().PrimaryPart
+                
+                if not Root then 
+                    ACHAOTICDATA.Config.AutoSpamParry.Spamming = false 
+                    return
                 end
-                if SpamBestBall then
-                    ACHAOTICDATA.Config.AutoSpamParry.Spamming = true
-                    ACHAOTICDATA.Global.AutoSpamParryCurrentAccuracy = SpamBestCheck * 1.5
+                
+                if not Closest_Entity or not Closest_Entity.PrimaryPart then 
+                    ACHAOTICDATA.Config.AutoSpamParry.Spamming = false 
+                    return 
                 end
+                
+                local Ping = ACHAOTICDATA.Global.RealtimePing or 30
+                local PingFactor = Ping / 500
+                local BallSpeed = Zoomies.VectorVelocity.Magnitude
+                
+                local TargetCheck = 30.3
+                if Ping <= 0 or Ping >= 130 then
+                    if Ping <= 131 or Ping >= 160 then
+                        if Ping <= 161 or Ping >= 225 then
+                            if Ping > 226 and Ping < 500 then
+                                TargetCheck = math.clamp(math.floor(math.max(BallSpeed / 4 + PingFactor, 32.5)), 32.5, 80)
+                            end
+                        else
+                            TargetCheck = math.clamp(math.floor(math.max(BallSpeed / 4.25 + PingFactor, 29.5)), 29.5, 70)
+                        end
+                    else
+                        TargetCheck = math.clamp(math.floor(math.max(BallSpeed / 4.65 + PingFactor, 27.25)), 27.25, 70)
+                    end
+                else
+                    TargetCheck = math.clamp(math.floor(math.max(BallSpeed / 5 + PingFactor, 26)), 26, 70)
+                end
+                
+                local RootPos = Root.Position
+                local BallPos = Ball.Position
+                local TargetPos = Closest_Entity.PrimaryPart.Position
+                
+                local DistToBall = (RootPos - BallPos).Magnitude
+                local DistToTarget = (RootPos - TargetPos).Magnitude
+                
+                ACHAOTICDATA.Global.AutoSpamParryCurrentAccuracy = TargetCheck * 1.5
+
+                local SpamVaildation = false
+                if ACHAOTICDATA.Config.AutoSpamParry.DetectionMode == "Speed" then
+                    SpamVaildation = ACHAOTICDATA.Global.Parries > 1
+                elseif ACHAOTICDATA.Config.AutoSpamParry.DetectionMode == "Distance" then
+                    SpamVaildation = true
+                end
+                ACHAOTICDATA.Config.AutoSpamParry.Spamming =  DistToBall <= TargetCheck * 1.5 and DistToTarget <= TargetCheck and SpamVaildation
             end
         else
             ACHAOTICDATA.Config.AutoSpamParry.Spamming = false
