@@ -4274,7 +4274,7 @@ local ACHAOTICDATA = {
             ParryMethod = "Blatant",
             SlashesofFuryDetectionMaxParryCount = 36,
             SlashesofFuryDetectionParryDelay = 0.05,
-            SpammingRPS = 180,
+            SpammingRPS = 2000,
             ParryCurveDirection = "Camera",
             FastBallProtection = false,
             LobbyAutoParryAccuracy = 80,
@@ -4826,7 +4826,6 @@ local function Parry()
     end
     local CameraCenter = Camera.ViewportSize / 2
     local CameraData = {CameraCenter.X, CameraCenter.Y}
-    print(Hash3())
     ParryRemote:FireServer(Hash1, Hash2, Hash3(), 0.025, Camera.CFrame, PlayerPositions, CameraData, false)
 end
 local ExecuteRemoteFireServer = function(ParryData)
@@ -6093,7 +6092,7 @@ do
     SpammingSection:AddSlider({
         Name = "Target RPS",
         Min = 60,
-        Max = 640,
+        Max = 2000,
         Round = 1,
         Default = ACHAOTICDATA.Config.ParrySettings.SpammingRPS,
         Type = " rps",
