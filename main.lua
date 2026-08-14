@@ -5018,9 +5018,10 @@ local function MainConnection()
                 local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
                 local speed = velocity.Magnitude
                 local ping_lead = math.clamp(ping / 1000, 0.02, 0.25)
-                local lead_time = ping_lead + 0.15
+                local speed_lead = math.max(0, (speed - 400) / 1500)
+                local lead_time = ping_lead + 0.15 + speed_lead
                 local time_to_impact = speed > 0 and (distance / speed) or 0
-                local parry_accuracy = math.clamp(speed * lead_time * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier, 4, 115)
+                local parry_accuracy = math.clamp(speed * lead_time * ACHAOTICDATA.Config.ParrySettings.SpeedDivisorMultiplier, 4, 400)
                 local curved = IsBall_Curved(Ball, ping, GetCharacter())
 
                 ACHAOTICDATA.Global.AutoParryCurrentAccuracy = parry_accuracy
@@ -5105,11 +5106,12 @@ local function MainConnection()
                 local Velocity = Zoomies.VectorVelocity
 local Distance = (GetCharacter().PrimaryPart.Position - Ball.Position).Magnitude - 5
                 local Ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-                local Ping_Lead = math.clamp(Ping / 1000, 0.02, 0.25)
-                local Lead_Time = Ping_Lead + 0.15
                 local Speed = Velocity.Magnitude
+                local Ping_Lead = math.clamp(Ping / 1000, 0.02, 0.25)
+                local Speed_Lead = math.max(0, (Speed - 400) / 1500)
+                local Lead_Time = Ping_Lead + 0.15 + Speed_Lead
                 local Time_To_Impact = Speed > 0 and (Distance / Speed) or 0
-                local Parry_Accuracy = math.clamp(Speed * Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier, 4, 115)
+                local Parry_Accuracy = math.clamp(Speed * Lead_Time * ACHAOTICDATA.Config.ParrySettings.LobbySpeedDivisorMultiplier, 4, 400)
                 local Curved = false --IsBall_Curved(Ball, Ping, GetCharacter())
 
                 local CurveVaildation = Curved and ACHAOTICDATA.Config.LobbyAutoParry.AntiCurveEnabled
