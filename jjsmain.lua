@@ -26,7 +26,17 @@ local GetControls = require(LocalPlayer.PlayerScripts.PlayerModule.ControlModule
 getgenv().JJS = getgenv().JJS or {}
 local CFG = getgenv().JJS
 
-local running = true
+if CFG.Hook then
+	pcall(CFG.Hook.revert)
+	CFG.Hook = nil
+end
+
+local firstLoad = not CFG.Loaded
+CFG.Loaded = true
+CFG.Alive = false
+task.wait(0.1)
+CFG.Alive = true
+
 local comboCount = 0
 local blocking = false
 local hookInstalled = false
@@ -93,7 +103,7 @@ local function releaseBlock()
 end
 
 task.spawn(function()
-	while running do
+	while CFG.Alive do
 		task.wait(0.05)
 		if not Toggles.AutoBlock.Value then
 			releaseBlock()
@@ -151,11 +161,14 @@ local function setupHitboxHook()
 		return old(self, ...)
 	end)
 	oldNamecall = old
+	CFG.Hook = { revert = function()
+		pcall(function() hookmetamethod(wsMt, "__namecall", oldNamecall) end)
+	end }
 	return true
 end
 
 task.spawn(function()
-	while running do
+	while CFG.Alive do
 		task.wait(0.3)
 		if Toggles.HitboxExpand.Value then
 			if not hookInstalled then
@@ -169,13 +182,14 @@ task.spawn(function()
 			hookInstalled = false
 			oldNamecall = nil
 			wsMt = nil
+			CFG.Hook = nil
 		end
 	end
 end)
 
 --[[ Auto Lock-On ]]
 task.spawn(function()
-	while running do
+	while CFG.Alive do
 		task.wait(0.15)
 		if Toggles.AutoLock.Value then
 			local cur = MovementController.LockOn
@@ -187,10 +201,32 @@ task.spawn(function()
 	end
 end)
 
---[[ Dash Assist (front toward lock target / side around target) ]]
-local oldDashRequest = MovementController.DashRequest
+--[[ Dash: Q always works without chaining into the game's own DashRequest
+(which can crash on a nil MovementService proxy in fresh sessions).
+Locks and dashes around the target when Dash Assist is on and a target is in
+range; otherwise dashes relative to the camera like the game would. ]]
+local function dashDirection()
+	local cam = workspace.CurrentCamera
+	local mv = GetControls()
+	if not cam then return "Front" end
+	local fwd = (cam.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+	local right = (cam.CFrame.RightVector * Vector3.new(1, 0, 1)).Unit
+	if fwd.Magnitude < 0.01 then fwd = Vector3.new(0, 0, -1) end
+	if right.Magnitude < 0.01 then right = Vector3.new(1, 0, 0) end
+	if math.abs(mv.X) < 0.2 and math.abs(mv.Z) < 0.2 then
+		return "Front"
+	end
+	local f = mv:Dot(fwd)
+	local r = mv:Dot(right)
+	if math.abs(f) >= math.abs(r) then
+		return f > 0 and "Front" or "Back"
+	end
+	return r > 0 and "Right" or "Left"
+end
+
 function MovementController:DashRequest()
-	if Toggles.DashAssist.Value and dashReady() then
+	if not dashReady() then return end
+	if Toggles.DashAssist.Value then
 		local hrp = getHRP()
 		local enemy = MovementController.LockOn or getNearestEnemy(Options.LockRange.Value)
 		if hrp and enemy and enemy:FindFirstChild("HumanoidRootPart") then
@@ -207,7 +243,7 @@ function MovementController:DashRequest()
 			end
 		end
 	end
-	return oldDashRequest()
+	fireDash(dashDirection())
 end
 
 --[[ No Cooldown (Yuji black flash loop)
@@ -246,7 +282,7 @@ end
 local function blackflashFinisher()
 	local hrp = getHRP()
 	local tgt = getNearestEnemy(12)
-	if not (running and hrp and tgt and tgt:FindFirstChild("HumanoidRootPart")) then
+	if not (CFG.Alive and hrp and tgt and tgt:FindFirstChild("HumanoidRootPart")) then
 		return
 	end
 	if Toggles.DashBehind.Value then
@@ -254,13 +290,13 @@ local function blackflashFinisher()
 	end
 	fireDash("Front")
 	task.wait(0.02)
-	if running and dashReady() then
+	if CFG.Alive and dashReady() then
 		pcall(function() ToolController:Melee() end)
 	end
 end
 
 task.spawn(function()
-	while running do
+	while CFG.Alive do
 		if Toggles.AutoBlackflash.Value then
 			local hrp = getHRP()
 			local tgt = getNearestEnemy(12)
@@ -277,7 +313,8 @@ task.spawn(function()
 end)
 
 --[[ UI ]]
-local Window = Library:CreateWindow({
+if firstLoad then
+	local Window = Library:CreateWindow({
 	Title = "jjsmain",
 	Footer = "Jujutsu Shenanigans",
 	Icon = 95816097006870,
@@ -367,9 +404,10 @@ SaveManager:BuildConfigSection(UISettings)
 ThemeManager:ApplyToTab(UISettings)
 
 SaveManager:LoadAutoloadConfig()
+end
 
 Library:OnUnload(function()
-	running = false
+	CFG.Alive = false
 	if hookInstalled and oldNamecall and wsMt then
 		pcall(function() hookmetamethod(wsMt, "__namecall", oldNamecall) end)
 	end
