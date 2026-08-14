@@ -5182,6 +5182,11 @@ if ACHAOTICDATA.Config.AutoSpamParry.Enabled then
                 local SpamPing = ACHAOTICDATA.Global.RealtimePing or 30
                 local SpamPingLead = math.clamp(SpamPing / 20, 5, 17)
                 local SpamRootPos = SpamRoot.Position
+                local Closest_Entity = GetClosest_Player()
+                local SpamClashDistance = math.huge
+                if Closest_Entity and Closest_Entity.PrimaryPart then
+                    SpamClashDistance = (SpamRootPos - Closest_Entity.PrimaryPart.Position).Magnitude
+                end
                 local SpamBestBall = nil
                 local SpamBestDistance = math.huge
                 local SpamBestCheck = 26
@@ -5208,6 +5213,9 @@ if ACHAOTICDATA.Config.AutoSpamParry.Enabled then
                         continue
                     end
                     local SpamCheck = math.clamp(math.floor(math.max(SpamSpeed / 5 + SpamPingLead, 26)), 26, 80)
+                    if SpamClashDistance > math.max(SpamCheck * 1.5, 55) then
+                        continue
+                    end
                     if SpamDistance <= SpamCheck * 1.5 and SpamDistance < SpamBestDistance then
                         SpamBestDistance = SpamDistance
                         SpamBestCheck = SpamCheck
