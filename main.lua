@@ -33,12 +33,10 @@ local Workspace = cloneref(game:GetService("Workspace"))
 local TextService = cloneref(game:GetService('TextService'));
 local Debris = cloneref(game:GetService("Debris"))
 local HttpService = cloneref(game:GetService("HttpService"))
+local httpRequest = (syn and syn.request) or request or http_request
 
 do
-    local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
-    Junkie.service = "Sky - Blade Ball"
-    Junkie.identifier = "35800"
-    Junkie.provider = "Sky"
+    local JUNKIE_API = "https://api.jnkie.com/api/v1/whitelist"
 
     local KeyValidated = false
 
@@ -127,9 +125,21 @@ do
     local maxAttempts = 5
 
     GetKeyBtn.MouseButton1Click:Connect(function()
-        local link, err = Junkie.get_key_link()
-        if link then
-            pcall(function() setclipboard(link) end)
+        local ok, resp = pcall(function()
+            local r = httpRequest({
+                Method = "POST",
+                Url = JUNKIE_API .. "/getKeyOpen",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({
+                    service = "Sky - Blade Ball",
+                    provider = "Sky",
+                    identifier = "35800"
+                })
+            })
+            return r
+        end)
+        if ok and resp and resp.StatusCode == 200 then
+            pcall(function() setclipboard(resp.Body) end)
             StatusLabel.Text = "Link copied to clipboard!"
             StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
         else
@@ -157,18 +167,36 @@ do
         StatusLabel.TextColor3 = Color3.fromRGB(200, 215, 230)
         SubmitBtn.Text = "..."
 
-        local result = Junkie.check_key(key)
+        local ok, resp = pcall(function()
+            return httpRequest({
+                Method = "POST",
+                Url = JUNKIE_API .. "/verifyOpen",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({
+                    key = tostring(key),
+                    service = "Sky - Blade Ball",
+                    identifier = "35800"
+                })
+            })
+        end)
 
-        if result and result.valid then
-            KeyValidated = true
-            getgenv().SCRIPT_KEY = key
-            StatusLabel.Text = "Key valid! Loading..."
-            StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
-            SubmitBtn.Text = "Success"
-            SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        if ok and resp and resp.StatusCode == 200 then
+            local data = HttpService:JSONDecode(resp.Body)
+            if data.valid then
+                KeyValidated = true
+                getgenv().SCRIPT_KEY = key
+                StatusLabel.Text = "Key valid! Loading..."
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+                SubmitBtn.Text = "Success"
+                SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            else
+                local errMsg = data.error or data.message or "Invalid key"
+                StatusLabel.Text = errMsg
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+                SubmitBtn.Text = "Submit"
+            end
         else
-            local errMsg = (result and result.error) or "Invalid key"
-            StatusLabel.Text = errMsg
+            StatusLabel.Text = "Connection error"
             StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
             SubmitBtn.Text = "Submit"
         end
