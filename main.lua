@@ -4093,7 +4093,7 @@ end
 local NZNotification = NeverZen:CreateNotifier()
 
 if not IsSupported then
-    NZNotification.new('Eryndor', 'Your executor was not supported.', 10)
+    NZNotification.new('Sky', 'Your executor was not supported.', 10)
     return
 end
 
@@ -4141,20 +4141,20 @@ local function AttemptFunctionFetch()
     return ParryDATACache
 end
 
-NZNotification.new('Eryndor', 'Attempting to fetch game data', 5)
+NZNotification.new('Sky', 'Attempting to fetch game data', 5)
 
 local Result = AttemptFunctionFetch()
 ParryDATA.ParryFunction = Result.ParryFunction
 ParryDATA.ParryRemote = Result.ParryRemote
 
 if ParryDATA.ParryFunction and ParryDATA.ParryRemote then
-    NZNotification.new('Eryndor', 'Successfully fetched game data.', 5)
+    NZNotification.new('Sky', 'Successfully fetched game data.', 5)
 else 
-    NZNotification.new('Eryndor', 'Failed to fetch game data, please check developer console.', 5)
+    NZNotification.new('Sky', 'Failed to fetch game data, please check developer console.', 5)
 end
-print(string.format("[Eryndor]:[DEBUG]\nParryFunction: %s\nParryRemote: %s", tostring(ParryDATA.ParryFunction), tostring(ParryDATA.ParryRemote)))
+print(string.format("[Sky]:[DEBUG]\nParryFunction: %s\nParryRemote: %s", tostring(ParryDATA.ParryFunction), tostring(ParryDATA.ParryRemote)))
 
-NZNotification.new('Eryndor', 'Attempting to load main script.', 5)
+NZNotification.new('Sky', 'Attempting to load main script.', 5)
 
 ACHAOTICASSETS.CurrentCamera = Workspace.CurrentCamera
 ACHAOTICASSETS.ServerStatsItem = Stats.Network.ServerStatsItem
@@ -4353,7 +4353,7 @@ local Optimization = {
 
 local UI = {
     Window = NeverZen.new({
-        Name = "Eryndor",
+        Name = "Sky",
         SubTitle = "Blade Ball",
         Keybind = Enum.KeyCode.LeftControl,
         Scale = UDim2.new(0, 611, 0, 396),
@@ -6199,15 +6199,15 @@ SpammingSection:AddSlider({
     ParrySystemSection:AddButton({
         Name = "Refetch function",
         Callback = function()
-            NZNotification.new("Eryndor", "Attempting to re-fetch parry function, might cause a possible freeze", 5)
+            NZNotification.new("Sky", "Attempting to re-fetch parry function, might cause a possible freeze", 5)
             local Result = AttemptFunctionFetch()
             ParryDATA.ParryFunction = Result.ParryFunction
             ParryDATA.ParryRemote = Result.ParryRemote
 
             if ParryDATA.ParryFunction and ParryDATA.ParryRemote then
-                NZNotification.new('Eryndor', 'Successfully fetched game data.', 5)
+                NZNotification.new('Sky', 'Successfully fetched game data.', 5)
             else 
-                NZNotification.new('Eryndor', 'Failed to fetch game data, please check developer console.', 5)
+                NZNotification.new('Sky', 'Failed to fetch game data, please check developer console.', 5)
             end
         end,
     })
@@ -7131,7 +7131,7 @@ do
     for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event) do
         if v.Function and debug.getinfo(v.Function).name == "parrySuccessAll" then
             SkinChanger.System.parrySuccessClientConnection = v
-            print("[Eryndor]:[DEBUG] Found parrySuccessClient connection")
+            print("[Sky]:[DEBUG] Found parrySuccessClient connection")
             v:Disable()
         end
     end
@@ -7289,7 +7289,7 @@ NeverZen:Track(RunService.Heartbeat:Connect(LoopConnection))
 
 ClearCache = function()
     AnimationFixService.Cache = {}
-    NZNotification.new('Eryndor ', 'Cleared internal caches.', 5)
+    NZNotification.new('Sky ', 'Cleared internal caches.', 5)
 end
 
 UnloadACHT = function()
@@ -7322,5 +7322,5 @@ NeverZen:Track(ACHAOTICDATA.Player.LocalPlayer.CharacterAdded:Connect(function()
     end)
 end))
 
-NZNotification.new('Eryndor', 'Loaded.', 10)
+NZNotification.new('Sky', 'Loaded.', 10)
 
