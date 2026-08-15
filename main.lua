@@ -180,7 +180,10 @@ do
             })
         end)
 
-        if ok and resp and resp.StatusCode == 200 then
+        if ok and resp then
+            warn("[Sky Key] HTTP " .. tostring(resp.StatusCode))
+            warn("[Sky Key] Response: " .. tostring(resp.Body))
+            if resp.StatusCode == 200 then
             local data = HttpService:JSONDecode(resp.Body)
             if data.valid then
                 KeyValidated = true
@@ -196,6 +199,8 @@ do
                 SubmitBtn.Text = "Submit"
             end
         else
+            warn("[Sky Key] Failed: ok=" .. tostring(ok))
+            if resp then warn("[Sky Key] Status: " .. tostring(resp.StatusCode) .. " Body: " .. tostring(resp.Body)) end
             StatusLabel.Text = "Connection error"
             StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
             SubmitBtn.Text = "Submit"
