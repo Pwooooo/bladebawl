@@ -2005,6 +2005,7 @@ do
                 Section.Name = NeverZen:RandomString()
                 Section.Parent = (string.lower(Config.Position) == "left" and LeftFrame) or RightFrame;
                 Section.BackgroundColor3 = NeverZen.Theme.SectionColor
+                Section.BackgroundTransparency = 0.8
                 Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Section.BorderSizePixel = 0
                 Section.ClipsDescendants = true
