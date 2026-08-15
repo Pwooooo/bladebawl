@@ -32,6 +32,151 @@ local CoreGui = cloneref(game:GetService("CoreGui"))
 local Workspace = cloneref(game:GetService("Workspace"))
 local TextService = cloneref(game:GetService('TextService'));
 local Debris = cloneref(game:GetService("Debris"))
+local HttpService = cloneref(game:GetService("HttpService"))
+
+do
+    local API_KEY = "6999e4ee-137d-40d0-8e7b-99f2f99d2d98"
+    local VALIDATE_URL = "https://api.pandauth.com/api/v1/keys/validate"
+    local GETKEY_URL = "https://ads.pandauth.com/getkey/" .. API_KEY
+    local KeyValidated = false
+
+    local hwid = ""
+    pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
+
+    local KeyGui = Instance.new("ScreenGui")
+    KeyGui.Name = "SkyKeySystem"
+    KeyGui.ResetOnSpawn = false
+    KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ;(protect_gui or protectgui or (syn and syn.protect_gui) or function(g) g.Parent = CoreGui end)(KeyGui)
+    if not KeyGui.Parent then KeyGui.Parent = CoreGui end
+
+    local MainFrame = Instance.new("Frame", KeyGui)
+    MainFrame.Size = UDim2.new(0, 320, 0, 220)
+    MainFrame.Position = UDim2.new(0.5, -160, 0.5, -110)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+    MainFrame.BorderSizePixel = 0
+
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+    local Stroke = Instance.new("UIStroke", MainFrame)
+    Stroke.Color = Color3.fromRGB(40, 40, 40)
+
+    local Title = Instance.new("TextLabel", MainFrame)
+    Title.Size = UDim2.new(1, -20, 0, 30)
+    Title.Position = UDim2.new(0, 10, 0, 10)
+    Title.BackgroundTransparency = 1
+    Title.Text = "Sky"
+    Title.TextColor3 = Color3.fromRGB(200, 215, 230)
+    Title.TextSize = 18
+    Title.Font = Enum.Font.GothamBold
+    Title.TextXAlignment = Enum.TextXAlignment.Center
+
+    local Sub = Instance.new("TextLabel", MainFrame)
+    Sub.Size = UDim2.new(1, -20, 0, 20)
+    Sub.Position = UDim2.new(0, 10, 0, 38)
+    Sub.BackgroundTransparency = 1
+    Sub.Text = "Key System"
+    Sub.TextColor3 = Color3.fromRGB(136, 136, 136)
+    Sub.TextSize = 12
+    Sub.Font = Enum.Font.Gotham
+    Sub.TextXAlignment = Enum.TextXAlignment.Center
+
+    local KeyInput = Instance.new("TextBox", MainFrame)
+    KeyInput.Size = UDim2.new(1, -40, 0, 35)
+    KeyInput.Position = UDim2.new(0, 20, 0, 70)
+    KeyInput.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    KeyInput.BorderSizePixel = 0
+    KeyInput.PlaceholderText = "Enter your key..."
+    KeyInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KeyInput.TextSize = 14
+    KeyInput.Font = Enum.Font.Gotham
+    KeyInput.ClearTextOnFocus = false
+    KeyInput.Text = ""
+    Instance.new("UICorner", KeyInput).CornerRadius = UDim.new(0, 4)
+
+    local SubmitBtn = Instance.new("TextButton", MainFrame)
+    SubmitBtn.Size = UDim2.new(1, -40, 0, 35)
+    SubmitBtn.Position = UDim2.new(0, 20, 0, 115)
+    SubmitBtn.BackgroundColor3 = Color3.fromRGB(200, 215, 230)
+    SubmitBtn.BorderSizePixel = 0
+    SubmitBtn.Text = "Submit"
+    SubmitBtn.TextColor3 = Color3.fromRGB(12, 12, 12)
+    SubmitBtn.TextSize = 14
+    SubmitBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 4)
+
+    local StatusLabel = Instance.new("TextLabel", MainFrame)
+    StatusLabel.Size = UDim2.new(1, -40, 0, 20)
+    StatusLabel.Position = UDim2.new(0, 20, 0, 160)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = ""
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+    StatusLabel.TextSize = 12
+    StatusLabel.Font = Enum.Font.Gotham
+    StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    local GetKeyBtn = Instance.new("TextButton", MainFrame)
+    GetKeyBtn.Size = UDim2.new(1, -40, 0, 20)
+    GetKeyBtn.Position = UDim2.new(0, 20, 0, 185)
+    GetKeyBtn.BackgroundTransparency = 1
+    GetKeyBtn.Text = "Don't have a key? Get one here"
+    GetKeyBtn.TextColor3 = Color3.fromRGB(0, 169, 239)
+    GetKeyBtn.TextSize = 11
+    GetKeyBtn.Font = Enum.Font.Gotham
+
+    GetKeyBtn.MouseButton1Click:Connect(function()
+        pcall(function() setclipboard(GETKEY_URL) end)
+        StatusLabel.Text = "Link copied to clipboard!"
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+    end)
+
+    local function DoValidate()
+        local key = KeyInput.Text
+        if key == "" then
+            StatusLabel.Text = "Please enter a key"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return
+        end
+        StatusLabel.Text = "Validating..."
+        StatusLabel.TextColor3 = Color3.fromRGB(200, 215, 230)
+        SubmitBtn.Text = "..."
+
+        local ok, res = pcall(function()
+            local body = HttpService:JSONEncode({ key = key, hwid = hwid, service = API_KEY })
+            return game:HttpPost(VALIDATE_URL, "application/json", true, body)
+        end)
+
+        if ok and res then
+            local valid = false
+            pcall(function()
+                local d = HttpService:JSONDecode(res)
+                valid = (d.status == "valid") or (d.valid == true) or (d.success == true)
+            end)
+            if valid then
+                KeyValidated = true
+                StatusLabel.Text = "Key valid! Loading..."
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+                SubmitBtn.Text = "Success"
+                SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            else
+                StatusLabel.Text = "Invalid key"
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+                SubmitBtn.Text = "Submit"
+            end
+        else
+            StatusLabel.Text = "Connection error"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            SubmitBtn.Text = "Submit"
+        end
+    end
+
+    SubmitBtn.MouseButton1Click:Connect(DoValidate)
+    KeyInput.FocusLost:Connect(function(enter) if enter then DoValidate() end end)
+
+    while not KeyValidated do task.wait(0.1) end
+    task.wait(0.5)
+    KeyGui:Destroy()
+end
 
 do
     local CurrentCamera = workspace.CurrentCamera;
