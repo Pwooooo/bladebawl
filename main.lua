@@ -35,13 +35,12 @@ local Debris = cloneref(game:GetService("Debris"))
 local HttpService = cloneref(game:GetService("HttpService"))
 
 do
-    local API_KEY = "6999e4ee-137d-40d0-8e7b-99f2f99d2d98"
-    local VALIDATE_URL = "https://api.pandauth.com/api/v1/keys/validate"
-    local GETKEY_URL = "https://ads.pandauth.com/getkey/" .. API_KEY
-    local KeyValidated = false
+    local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
+    Junkie.service = "Sky - Blade Ball"
+    Junkie.identifier = "35800"
+    Junkie.provider = "Sky"
 
-    local hwid = ""
-    pcall(function() hwid = game:GetService("RbxAnalyticsService"):GetClientId() end)
+    local KeyValidated = false
 
     local KeyGui = Instance.new("ScreenGui")
     KeyGui.Name = "SkyKeySystem"
@@ -51,8 +50,8 @@ do
     if not KeyGui.Parent then KeyGui.Parent = CoreGui end
 
     local MainFrame = Instance.new("Frame", KeyGui)
-    MainFrame.Size = UDim2.new(0, 320, 0, 220)
-    MainFrame.Position = UDim2.new(0.5, -160, 0.5, -110)
+    MainFrame.Size = UDim2.new(0, 320, 0, 240)
+    MainFrame.Position = UDim2.new(0.5, -160, 0.5, -120)
     MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
     MainFrame.BorderSizePixel = 0
 
@@ -124,10 +123,19 @@ do
     GetKeyBtn.TextSize = 11
     GetKeyBtn.Font = Enum.Font.Gotham
 
+    local attempts = 0
+    local maxAttempts = 5
+
     GetKeyBtn.MouseButton1Click:Connect(function()
-        pcall(function() setclipboard(GETKEY_URL) end)
-        StatusLabel.Text = "Link copied to clipboard!"
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+        local link, err = Junkie.get_key_link()
+        if link then
+            pcall(function() setclipboard(link) end)
+            StatusLabel.Text = "Link copied to clipboard!"
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+        else
+            StatusLabel.Text = "Rate limited - wait 5 min"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+        end
     end)
 
     local function DoValidate()
@@ -137,34 +145,30 @@ do
             StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
             return
         end
+
+        attempts = attempts + 1
+        if attempts > maxAttempts then
+            StatusLabel.Text = "Too many attempts"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return
+        end
+
         StatusLabel.Text = "Validating..."
         StatusLabel.TextColor3 = Color3.fromRGB(200, 215, 230)
         SubmitBtn.Text = "..."
 
-        local ok, res = pcall(function()
-            local body = HttpService:JSONEncode({ key = key, hwid = hwid, service = API_KEY })
-            return game:HttpPost(VALIDATE_URL, "application/json", true, body)
-        end)
+        local result = Junkie.check_key(key)
 
-        if ok and res then
-            local valid = false
-            pcall(function()
-                local d = HttpService:JSONDecode(res)
-                valid = (d.status == "valid") or (d.valid == true) or (d.success == true)
-            end)
-            if valid then
-                KeyValidated = true
-                StatusLabel.Text = "Key valid! Loading..."
-                StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
-                SubmitBtn.Text = "Success"
-                SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-            else
-                StatusLabel.Text = "Invalid key"
-                StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-                SubmitBtn.Text = "Submit"
-            end
+        if result and result.valid then
+            KeyValidated = true
+            getgenv().SCRIPT_KEY = key
+            StatusLabel.Text = "Key valid! Loading..."
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+            SubmitBtn.Text = "Success"
+            SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
         else
-            StatusLabel.Text = "Connection error"
+            local errMsg = (result and result.error) or "Invalid key"
+            StatusLabel.Text = errMsg
             StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
             SubmitBtn.Text = "Submit"
         end
