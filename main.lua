@@ -4752,6 +4752,73 @@ local function GetParry_Data(curveDirection, IsInLobbyTrainning)
         else
             return {ACHAOTICASSETS.CurrentCamera.CFrame, PlayerPositions, Vector2_Mouse_Location}
         end
+    elseif curveDirection == 'Pure Distance' then
+        local closestEntity = nil
+        local closestDistance = math.huge
+        local myRoot = GetCharacter() and GetCharacter().PrimaryPart
+
+        if IsInLobbyTrainning then
+            for _, player_character in workspace.Dead:GetChildren() do
+                local player = Players:GetPlayerFromCharacter(player_character)
+                if player and (player:GetAttribute("LobbyTraining") and player_character:FindFirstChild("HumanoidRootPart")) and myRoot then
+                    local distance = (myRoot.Position - player_character.PrimaryPart.Position).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestEntity = player_character
+                    end
+                end
+            end
+            for _, target in CollectionService:GetTagged("LobbyTrainingTarget") do
+                if myRoot then
+                    local distance = (myRoot.Position - target.Position).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestEntity = target
+                    end
+                end
+            end
+        else
+            local CurrentlySelectedMode = Workspace:GetAttribute("CurrentlySelectedMode")
+            if CurrentlySelectedMode == "Hovergoal" or CurrentlySelectedMode == "Soccer" then
+                local TeamNumber
+                if ACHAOTICASSETS.ThreadSafeTargetingHelper.GetPlayerTeam(ACHAOTICDATA.Player.LocalPlayer) == 1 then TeamNumber = 2 else TeamNumber = 1 end
+                for _, hovergoalgoal in CollectionService:GetTagged("HovergoalGoal") do
+                    if hovergoalgoal.Name == ("Goal%*"):format((tostring(TeamNumber))) and myRoot then
+                        local distance = (myRoot.Position - hovergoalgoal.Target.Position).Magnitude
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestEntity = hovergoalgoal.Target
+                        end
+                        break
+                    end
+                end
+                for _, player_character in Workspace.Alive:GetChildren() do
+                    if player_character.PrimaryPart and player_character:GetAttribute("IsTheRisingZombie") and myRoot then
+                        local distance = (myRoot.Position - player_character.PrimaryPart.Position).Magnitude
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestEntity = player_character
+                        end
+                    end
+                end
+            else
+                for _, player_character in Workspace.Alive:GetChildren() do
+                    if player_character.PrimaryPart and myRoot then
+                        local distance = (myRoot.Position - player_character.PrimaryPart.Position).Magnitude
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestEntity = player_character
+                        end
+                    end
+                end
+            end
+        end
+
+        if closestEntity and closestEntity.PrimaryPart and myRoot then
+            return {CFrame.new(myRoot.Position, closestEntity.PrimaryPart.Position), PlayerPositions, Vector2_Mouse_Location}
+        else
+            return {ACHAOTICASSETS.CurrentCamera.CFrame, PlayerPositions, Vector2_Mouse_Location}
+        end
     elseif curveDirection == 'Up' then
         local upDirection = ACHAOTICASSETS.CurrentCamera.CFrame.UpVector * 1e9
         return {CFrame.new(ACHAOTICASSETS.CurrentCamera.CFrame.Position, ACHAOTICASSETS.CurrentCamera.CFrame.Position + upDirection), PlayerPositions, Vector2_Mouse_Location}
@@ -4870,7 +4937,7 @@ local FireParry = function()
         local SafeModeEnabled = ACHAOTICDATA.Config.ParrySettings.SafeMode
         local ShouldExecuteRemoteFireServer = (IsBlockLegit and SafeModeEnabled) or not SafeModeEnabled
         if ShouldExecuteRemoteFireServer then
-            local ParryData = GetParry_Data(ACHAOTICDATA.Config.ParrySettings.ParryCurveDirection, IsInLobbyTrainning)
+            local ParryData = GetParry_Data("Pure Distance", IsInLobbyTrainning)
             ExecuteRemoteFireServer(ParryData)
         end
     elseif ParryMethod == "Legit" then
